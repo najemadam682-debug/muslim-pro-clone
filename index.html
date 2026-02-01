@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muslim App</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #e0f2f1; margin: 0; color: #333; }
+        .header { background: #00796b; color: white; padding: 30px 20px; border-radius: 0 0 25px 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .card { background: white; margin: -20px 20px 20px 20px; padding: 25px; border-radius: 20px; box-shadow: 0 10px 20px rgba(0,0,0,0.1); position: relative; z-index: 10; }
+        .prayer-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; font-size: 1.1rem; }
+        .prayer-row:last-child { border-bottom: none; }
+        .prayer-name { font-weight: bold; color: #00796b; }
+        .prayer-time { color: #555; }
+        .status { font-size: 0.9rem; margin-top: 10px; color: #666; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Muslim App</h1>
+        <p id="city">Rilevamento posizione...</p>
+    </div>
+
+    <div class="card">
+        <div id="prayer-list">
+            <p>Caricamento orari sacri...</p>
+        </div>
+        <p class="status" id="date"></p>
+    </div>
+
+    <script>
+        // Funzione per ottenere la posizione dell'utente
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(showPosition, showError);
+        } else {
+            getPrayers("Rome", "Italy"); // Default se il GPS è spento
+        }
+
+        function showPosition(position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            fetch(`https://api.aladhan.com/v1/timingsByAddress?address=${lat},${lon}&method=3`)
+                .then(res => res.json())
+                .then(data => displayData(data));
+        }
+
+        function showError() {
+            getPrayers("Rome", "Italy");
+        }
+
+        function getPrayers(city, country) {
+            fetch(`https://api.aladhan.com/v1/timingsByCity?city=${city}&country=${country}&method=3`)
+                .then(res => res.json())
+                .then(data => displayData(data));
+        }
+
+        function displayData(data) {
+            const t = data.data.timings;
+            const date = data.data.date.readable;
+            document.getElementById('city').innerText = "Orari basati sulla tua posizione";
+            document.getElementById('date').innerText = "Data: " + date;
+            
+            const prayers = [
+                {n: "Fajr", v: t.Fajr},
+                {n: "Sorgente", v: t.Sunrise},
+                {n: "Dhuhr", v: t.Dhuhr},
+                {n: "Asr", v: t.Asr},
+                {n: "Maghrib", v: t.Maghrib},
+                {n: "Isha", v: t.Isha}
+            ];
+
+            let html = "";
+            prayers.forEach(p => {
+                html += `<div class="prayer-row">
+                            <span class="prayer-name">${p.n}</span>
+                            <span class="prayer-time">${p.v}</span>
+                         </div>`;
+            });
+            document.getElementById('prayer-list').innerHTML = html;
+        }
+    </script>
+</body>
+</html>
