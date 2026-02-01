@@ -1,80 +1,123 @@
-<script>
-        let prayerTimes = {};
-        let adhanAudio = new Audio('https://www.islamcan.com/audio/adhan/azan1.mp3'); // Link audio Adhan
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Muslim Life Pro</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#00796b">
+    <style>
+        :root { --primary: #00796b; --gold: #d4af37; --bg: #f8faf9; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg); padding-bottom: 80px; }
+        
+        .header { background: var(--primary); color: white; padding: 25px; text-align: center; border-radius: 0 0 25px 25px; }
+        .content { padding: 15px; display: none; }
+        .active { display: block; }
+        
+        .card { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .prayer-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        
+        /* Navigazione migliorata */
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #ddd; z-index: 1000; }
+        .nav-item { border: none; background: none; color: #888; font-size: 11px; flex: 1; text-align: center; }
+        .nav-item.active-nav { color: var(--primary); font-weight: bold; }
+        .nav-icon { font-size: 20px; display: block; margin-bottom: 4px; }
 
-        // Gestione Tab
+        /* Lista Sure/Dua */
+        .item-list { text-align: left; }
+        .item-row { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .arabic { font-size: 22px; text-align: right; display: block; color: var(--primary); margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+    <div id="home" class="content active">
+        <div class="header">
+            <h2 id="hijri-date">Data Hijri</h2>
+            <p id="city">Localizzazione...</p>
+        </div>
+        <div class="card" id="prayer-list">Caricamento preghiere...</div>
+    </div>
+
+    <div id="quran" class="content">
+        <div class="header"><h2>Sure Scelte</h2></div>
+        <div class="card item-list" id="surah-list">
+            <div class="item-row" onclick="loadSurah(1)">1. Al-Fatiha</div>
+            <div class="item-row" onclick="loadSurah(112)">112. Al-Ikhlas</div>
+            <div class="item-row" onclick="loadSurah(113)">113. Al-Falaq</div>
+            <div class="item-row" onclick="loadSurah(114)">114. An-Nas</div>
+            <div id="surah-display"></div>
+        </div>
+    </div>
+
+    <div id="dua" class="content">
+        <div class="header"><h2>Dua e Azkar</h2></div>
+        <div class="card">
+            <div class="item-row"><b>Al mattino:</b> <span class="arabic">اللّهُـمَّ بِكَ أَصْـبَحְنَا</span></div>
+            <div class="item-row"><b>Per i genitori:</b> <span class="arabic">رَّبِّ ارْحَمْهُمَا كَمَا رَبَّيَانِي صَغِيرًا</span></div>
+        </div>
+    </div>
+
+    <div id="calendar" class="content">
+        <div class="header"><h2>Calendario & Ramadan</h2></div>
+        <div class="card" style="text-align: center;">
+            <h3 style="color: var(--gold);">🌙 Ramadan 2026</h3>
+            <p id="ramadan-countdown">Calcolo giorni...</p>
+            <hr>
+            <p>Iftar oggi: <b id="iftar-time">--:--</b></p>
+            <p>Suhoor oggi: <b id="suhoor-time">--:--</b></p>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <button class="nav-item active-nav" onclick="showTab('home', this)"><span class="nav-icon">🏠</span>Home</button>
+        <button class="nav-item" onclick="showTab('quran', this)"><span class="nav-icon">📖</span>Corano</button>
+        <button class="nav-item" onclick="showTab('dua', this)"><span class="nav-icon">🤲</span>Dua</button>
+        <button class="nav-item" onclick="showTab('calendar', this)"><span class="nav-icon">📅</span>Calendario</button>
+    </nav>
+
+    <script>
         function showTab(id, btn) {
             document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active-nav'));
             document.getElementById(id).classList.add('active');
             btn.classList.add('active-nav');
-            if(id === 'quran') loadQuran();
-            if(id === 'qibla') loadQibla();
         }
 
-        // Recupero Posizione e Orari
+        // Dati Preghiere e Calendario
         navigator.geolocation.getCurrentPosition(pos => {
-            const lat = pos.coords.latitude;
-            const lon = pos.coords.longitude;
-            fetch(`https://api.aladhan.com/v1/timingsByAddress?address=${lat},${lon}&method=3`)
+            fetch(`https://api.aladhan.com/v1/timingsByAddress?address=${pos.coords.latitude},${pos.coords.longitude}&method=3`)
                 .then(res => res.json()).then(data => {
-                    prayerTimes = data.data.timings;
-                    updatePrayerUI(prayerTimes);
-                    startAdhanCheck(); // Inizia a controllare l'orario
+                    const t = data.data.timings;
+                    const hijri = data.data.date.hijri;
+                    
+                    document.getElementById('hijri-date').innerText = `${hijri.day} ${hijri.month.en} ${hijri.year}`;
+                    document.getElementById('iftar-time').innerText = t.Maghrib;
+                    document.getElementById('suhoor-time').innerText = t.Imsak;
+                    
+                    document.getElementById('prayer-list').innerHTML = `
+                        <div class="prayer-row"><span>Fajr (Alba)</span><b>${t.Fajr}</b></div>
+                        <div class="prayer-row"><span>Dhuhr</span><b>${t.Dhuhr}</b></div>
+                        <div class="prayer-row"><span>Asr</span><b>${t.Asr}</b></div>
+                        <div class="prayer-row"><span>Maghrib (Tramonto)</span><b>${t.Maghrib}</b></div>
+                        <div class="prayer-row"><span>Isha</span><b>${t.Isha}</b></div>
+                    `;
                 });
         });
 
-        function updatePrayerUI(t) {
-            document.getElementById('city').innerText = "La tua posizione";
-            document.getElementById('prayer-list').innerHTML = `
-                <div class="prayer-row"><span>Fajr</span><b>${t.Fajr}</b></div>
-                <div class="prayer-row"><span>Dhuhr</span><b>${t.Dhuhr}</b></div>
-                <div class="prayer-row"><span>Asr</span><b>${t.Asr}</b></div>
-                <div class="prayer-row"><span>Maghrib</span><b>${t.Maghrib}</b></div>
-                <div class="prayer-row"><span>Isha</span><b>${t.Isha}</b></div>
-                <button onclick="testAdhan()" style="margin-top:15px; width:100%; padding:10px; border-radius:10px; border:none; background:#00796b; color:white;">🔔 Prova Suono Adhan</button>
-            `;
-        }
-
-        // Funzione che controlla l'ora ogni minuto
-        function startAdhanCheck() {
-            setInterval(() => {
-                const oraAttuale = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
-                const listaPreghiere = [prayerTimes.Fajr, prayerTimes.Dhuhr, prayerTimes.Asr, prayerTimes.Maghrib, prayerTimes.Isha];
-                
-                if (listaPreghiere.includes(oraAttuale)) {
-                    playAdhan();
-                }
-            }, 60000); // 60000ms = 1 minuto
-        }
-
-        function playAdhan() {
-            adhanAudio.play().catch(e => console.log("Attiva l'audio manualmente la prima volta"));
-        }
-
-        function testAdhan() {
-            alert("L'Adhan suonerà all'orario stabilito. Prova audio in corso...");
-            playAdhan();
-        }
-
-        // --- Resto delle funzioni (Corano e Qibla) ---
-        function loadQuran() {
-            fetch('https://api.alquran.cloud/v1/ayah/262/it.piccardo')
+        // Corano dinamico
+        function loadSurah(id) {
+            document.getElementById('surah-display').innerHTML = "Caricamento...";
+            fetch(`https://api.alquran.cloud/v1/surah/${id}/it.piccardo`)
                 .then(res => res.json()).then(data => {
-                    document.getElementById('verse-text').innerText = data.data.text;
-                    document.getElementById('verse-translation').innerText = "Surah Al-Baqarah, Ayah 262";
+                    let html = `<hr><h3>${data.data.englishName}</h3>`;
+                    data.data.ayahs.forEach(a => {
+                        html += `<p class="arabic">${a.text}</p><p style="font-size:14px">${a.numberInSurah}. ${a.text}</p>`;
+                    });
+                    document.getElementById('surah-display').innerHTML = html;
                 });
         }
-
-        function loadQibla() {
-            navigator.geolocation.getCurrentPosition(pos => {
-                const lat = pos.coords.latitude; const lon = pos.coords.longitude;
-                fetch(`https://api.aladhan.com/v1/qibla/${lat}/${lon}`)
-                    .then(res => res.json()).then(data => {
-                        const deg = data.data.direction;
-                        document.getElementById('qibla-arrow').style.transform = `rotate(${deg}deg)`;
-                        document.getElementById('qibla-deg').innerText = Math.round(deg) + "° rispetto al Nord";
-                    });
-            });
-        }
     </script>
+</body>
+</html>
