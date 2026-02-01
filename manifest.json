@@ -1,0 +1,16 @@
+{
+  "name": "Muslim Pro Clone",
+  "short_name": "MuslimApp",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#00796b",
+  "theme_color": "#00796b",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2972/2972130.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
